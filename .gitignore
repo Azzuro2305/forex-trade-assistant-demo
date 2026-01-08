@@ -1,0 +1,17 @@
+# MetaTrader compiled files
+*.ex5
+*.ex4
+*.log
+
+# MT5 runtime
+Tester/
+Logs/
+Profiles/
+
+# Editor files
+.vscode/
+.cursor/
+
+# OS junk
+Thumbs.db
+Desktop.ini
