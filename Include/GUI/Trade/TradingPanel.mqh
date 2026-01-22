@@ -7,8 +7,8 @@
 #property version   "1.00"
 #property strict
 
-#include "../Config/Inputs.mqh"
-#include "../Core/Logger.mqh"
+#include "../../Config/Inputs.mqh"
+#include "../../Core/Logger.mqh"
 
 //+------------------------------------------------------------------+
 //| Risk calculation mode                                            |

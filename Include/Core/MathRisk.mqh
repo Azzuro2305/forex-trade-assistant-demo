@@ -82,6 +82,22 @@ double CalculateRiskAmount(double lotSize, int stopLossPoints, string symbol = N
 }
 
 //+------------------------------------------------------------------+
+//| Calculate profit amount from lot size and take profit            |
+//+------------------------------------------------------------------+
+double CalculateProfitAmount(double lotSize, int takeProfitPoints, string symbol = NULL)
+{
+   if(symbol == NULL) symbol = _Symbol;
+   if(takeProfitPoints <= 0 || lotSize <= 0) return 0;
+   
+   double tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
+   double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+   double pointValue = SymbolInfoDouble(symbol, SYMBOL_POINT);
+   double pointValueInCurrency = tickValue * (pointValue / tickSize);
+   
+   return lotSize * takeProfitPoints * pointValueInCurrency;
+}
+
+//+------------------------------------------------------------------+
 //| Calculate risk percentage from lot size and stop loss           |
 //+------------------------------------------------------------------+
 double CalculateRiskPercent(double lotSize, int stopLossPoints, string symbol = NULL)
@@ -93,5 +109,4 @@ double CalculateRiskPercent(double lotSize, int stopLossPoints, string symbol = 
    double riskAmount = CalculateRiskAmount(lotSize, stopLossPoints, symbol);
    return (riskAmount / balance) * 100.0;
 }
-
 //+------------------------------------------------------------------+

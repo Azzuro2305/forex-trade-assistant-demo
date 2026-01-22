@@ -26,8 +26,8 @@ input string InpTradeComment = "FTA_EA";     // Trade Comment
 input group "=== Trading Settings ==="
 input double InpLotSize = 0.01;              // Lot Size
 input int    InpSlippage = 30;               // Slippage (points)
-input int    InpStopLoss = 50;               // Stop Loss (points)
-input int    InpTakeProfit = 100;            // Take Profit (points)
+input int    InpStopLoss = 1000;               // Stop Loss (points)
+input int    InpTakeProfit = 2000;            // Take Profit (points)
 
 //+------------------------------------------------------------------+
 //| Risk Management                                                  |
@@ -54,14 +54,14 @@ input bool   InpEnableUI = true;             // Enable UI (set false for VPS)
 //| Visual Trading GUI (Local Only - ignored if EnableUI=false)      |
 //+------------------------------------------------------------------+
 input group "=== Visual Trading GUI (Local Only) ==="
-input bool   InpEnableVisualTrading = true;  // Enable Visual Trading
+input bool   InpEnableVisualTrading = false;  // Enable Visual Trading
 input int    InpPanelX = 20;                 // Panel X Position
 input int    InpPanelY = 50;                 // Panel Y Position
-input color  InpBuyLineColor = clrDodgerBlue;    // Buy Line Color
-input color  InpSellLineColor = clrCrimson;      // Sell Line Color
+input color  InpBuyLineColor = Blue;    // Buy Line Color
+input color  InpSellLineColor = Blue;      // Sell Line Color
 input color  InpTPLineColor = clrLimeGreen;       // TP Line Color
 input color  InpSLLineColor = clrRed;            // SL Line Color
-input int    InpLineWidth = 2;              // Line Width
+input int    InpLineWidth = 1;              // Line Width
 input int    InpLineStyle = STYLE_SOLID;    // Line Style
 input bool   InpUseFixedRR = false;         // Use Fixed Risk/Reward
 input double InpFixedRR = 2.0;              // Fixed Risk/Reward Ratio

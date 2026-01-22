@@ -32,32 +32,38 @@ public:
    int ParseHistory(datetime fromDate, datetime toDate)
    {
       int dealCount = 0;
-      
+   
       if(!HistorySelect(fromDate, toDate))
       {
          if(m_logger != NULL)
             m_logger.Error("Failed to select history");
          return 0;
       }
-      
+   
       int total = HistoryDealsTotal();
       for(int i = 0; i < total; i++)
       {
          ulong ticket = HistoryDealGetTicket(i);
-         if(ticket > 0)
-         {
-            if(HistoryDealGetInteger(ticket, DEAL_MAGIC) == m_magicNumber)
-            {
-               dealCount++;
-            }
-         }
+         if(ticket == 0)
+            continue;
+   
+         long magic = HistoryDealGetInteger(ticket, DEAL_MAGIC);
+         if(magic != (long)m_magicNumber)
+            continue;
+   
+         // Optional: only count buy/sell
+         ENUM_DEAL_TYPE type = (ENUM_DEAL_TYPE)HistoryDealGetInteger(ticket, DEAL_TYPE);
+         if(type != DEAL_TYPE_BUY && type != DEAL_TYPE_SELL)
+            continue;
+   
+         dealCount++;
       }
-      
+   
       if(m_logger != NULL)
          m_logger.Info("Parsed " + IntegerToString(dealCount) + " deals from history");
-      
+   
       return dealCount;
-   }
+   }   
 };
 
 //+------------------------------------------------------------------+

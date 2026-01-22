@@ -9,11 +9,11 @@
 
 #include "VisualTradeLines.mqh"
 #include "TradingPanel.mqh"
-#include "../Engine/TradeManager.mqh"
-#include "../Engine/RiskManager.mqh"
-#include "../Utils/Helpers.mqh"
-#include "../Core/SymbolUtils.mqh"
-#include "../Core/MathRisk.mqh"
+#include "../../Engine/TradeManager.mqh"
+#include "../../Engine/RiskManager.mqh"
+#include "../../Utils/Helpers.mqh"
+#include "../../Core/SymbolUtils.mqh"
+#include "../../Core/MathRisk.mqh"
 
 //+------------------------------------------------------------------+
 //| Visual Trade Manager class                                       |
@@ -98,6 +98,8 @@ public:
          if(m_tradeLines.IsOpenButtonClicked(sparam))
          {
             ExecuteTrade();
+            // Remove visual lines completely from chart after trade execution
+            ClearLines();
             return;
          }
       }
@@ -174,6 +176,12 @@ public:
          {
             ClearLines();
          }
+      }
+      
+      // CRITICAL: Forward CHARTEVENT_CHART_CHANGE to trade lines for zoom/pan updates
+      if(id == CHARTEVENT_CHART_CHANGE && m_tradeLines != NULL && m_tradeLines.IsActive())
+      {
+         m_tradeLines.OnChartEvent(id, sparam);
       }
    }
    

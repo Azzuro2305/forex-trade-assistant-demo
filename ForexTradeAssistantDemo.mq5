@@ -16,11 +16,12 @@
 #include "Include/Engine/Engine.mqh"
 
 //+------------------------------------------------------------------+
-//| Includes - GUI (Conditional - Only if EnableUI=true)            |
+//| Includes - GUI (Conditional - why Only if EnableUI=true)            |
 //+------------------------------------------------------------------+
 // Note: GUI includes are loaded but only used if InpEnableUI=true
 // This allows the EA to compile with GUI code but skip execution on VPS
-#include "Include/GUI/VisualTradeManager.mqh"
+#include "Include/GUI/UIController.mqh"
+#include "Include/GUI/Trade/VisualTradeManager.mqh"
 
 //+------------------------------------------------------------------+
 //| Global objects                                                   |
@@ -28,7 +29,9 @@
 CRuntimeConfig* g_config = NULL;
 CLogger*        g_logger = NULL;
 CEngine*        g_engine = NULL;
-CVisualTradeManager* g_visualTrade = NULL;  // GUI object (only used if EnableUI=true)
+
+CUIController*  g_uiController = NULL;  // Main UI controller (only used if EnableUI=true)
+CVisualTradeManager* g_visualTradeManager = NULL;  // Visual trading manager (only used if EnableUI=true and EnableVisualTrading=true)
 
 // Runtime GUI flag (set from input)
 bool g_enableUI = true;
@@ -68,24 +71,43 @@ int OnInit()
    }
    
    // Initialize GUI (only if UI enabled)
-   if(g_enableUI && InpEnableVisualTrading)
+   if(g_enableUI)
    {
       // Get managers from engine for GUI
       CTradeManager* tradeMgr = g_engine.GetTradeManager();
       CRiskManager* riskMgr = g_engine.GetRiskManager();
+      CBEManager* beMgr = g_engine.GetBEManager();
+      CTrailingManager* trailingMgr = g_engine.GetTrailingManager();
+      CDDGuard* ddGuard = g_engine.GetDDGuard();
       
       if(tradeMgr != NULL && riskMgr != NULL)
       {
-         g_visualTrade = new CVisualTradeManager(tradeMgr, riskMgr, g_logger);
-         if(!g_visualTrade.Initialize())
+         g_uiController = new CUIController(50, 50, g_logger);
+         if(!g_uiController.Initialize(tradeMgr, riskMgr, beMgr, trailingMgr, ddGuard, InpMagicNumber))
          {
-            g_logger.Warn("Visual trading initialization failed, continuing without GUI");
-            delete g_visualTrade;
-            g_visualTrade = NULL;
+            g_logger.Warn("UI initialization failed, continuing without GUI");
+            delete g_uiController;
+            g_uiController = NULL;
          }
          else
          {
-            g_logger.Info("UI enabled - Visual trading initialized");
+            g_logger.Info("UI enabled - Main UI controller initialized");
+         }
+         
+         // Initialize Visual Trading Manager (if enabled)
+         if(InpEnableVisualTrading)
+         {
+            g_visualTradeManager = new CVisualTradeManager(tradeMgr, riskMgr, g_logger);
+            if(!g_visualTradeManager.Initialize())
+            {
+               g_logger.Warn("Visual trading initialization failed");
+               delete g_visualTradeManager;
+               g_visualTradeManager = NULL;
+            }
+            else
+            {
+               g_logger.Info("Visual trading enabled - TradingPanel initialized");
+            }
          }
       }
    }
@@ -130,11 +152,61 @@ void OnDeinit(const int reason)
       g_logger.Info("EA deinitialized: " + reasonText);
    }
    
-   // Clean up objects
-   if(g_visualTrade != NULL)   { delete g_visualTrade; g_visualTrade = NULL; }
+   // CRITICAL: Clean up UI objects first (before deleting controller)
+   if(g_visualTradeManager != NULL)
+   {
+      delete g_visualTradeManager;
+      g_visualTradeManager = NULL;
+   }
+   
+   if(g_uiController != NULL)
+   {
+      g_uiController.DeleteAll(); // Explicitly clean up all UI objects
+      delete g_uiController; 
+      g_uiController = NULL;
+   }
+   
+   // CRITICAL: Comprehensive cleanup of all EA-related objects
+   // This ensures nothing is left behind when EA is removed
+   // Use ObjectsDeleteAll with prefixes first (more efficient)
+   ObjectsDeleteAll(0, EA_NAME + "_");
+   ObjectsDeleteAll(0, "TradePanel_");
+   ObjectsDeleteAll(0, "ManagePanel_");
+   ObjectsDeleteAll(0, "GuardPanel_");
+   ObjectsDeleteAll(0, "ReviewPanel_");
+   ObjectsDeleteAll(0, "FTA_UI_");
+   ObjectsDeleteAll(0, "VTL_");
+   ObjectsDeleteAll(0, "TradingPanel_");
+   
+   // Then do a final pass to catch any remaining objects
+   int total = ObjectsTotal(0);
+   for(int i = total - 1; i >= 0; i--)
+   {
+      string name = ObjectName(0, i);
+      
+      // Delete all objects with EA name prefix
+      if(StringFind(name, EA_NAME + "_") == 0)
+         ObjectDelete(0, name);
+      // Delete all VTL_ objects (visual trade lines)
+      else if(StringFind(name, "VTL_") == 0)
+         ObjectDelete(0, name);
+      // Delete all panel objects (in case panel names changed)
+      else if(StringFind(name, "TradePanel_") == 0 ||
+              StringFind(name, "ManagePanel_") == 0 ||
+              StringFind(name, "GuardPanel_") == 0 ||
+              StringFind(name, "ReviewPanel_") == 0 ||
+              StringFind(name, "FTA_UI_") == 0)
+         ObjectDelete(0, name);
+   }
+   
+   ChartRedraw();
+   
+   // Clean up engine and other objects
    if(g_engine != NULL)        { delete g_engine; g_engine = NULL; }
    if(g_logger != NULL)         { delete g_logger; g_logger = NULL; }
    if(g_config != NULL)        { delete g_config; g_config = NULL; }
+   
+   ChartRedraw();
 }
 
 //+------------------------------------------------------------------+
@@ -149,9 +221,15 @@ void OnTick()
    }
    
    // Update GUI (only if UI enabled)
-   if(g_enableUI && g_visualTrade != NULL)
+   if(g_enableUI && g_uiController != NULL)
    {
-      g_visualTrade.Update();
+      g_uiController.Update();
+   }
+   
+   // Update Visual Trading Manager (only if enabled)
+   if(g_enableUI && g_visualTradeManager != NULL && g_visualTradeManager.IsEnabled())
+   {
+      g_visualTradeManager.Update();
    }
 }
 
@@ -177,10 +255,16 @@ void OnChartEvent(const int id, const long& lparam, const double& dparam, const 
    // Only handle chart events if UI is enabled
    if(!g_enableUI) return;
    
-   // Handle visual trading events
-   if(g_visualTrade != NULL)
+   // Handle UI events
+   if(g_uiController != NULL)
    {
-      g_visualTrade.OnChartEvent(id, lparam, dparam, sparam);
+      g_uiController.OnChartEvent(id, lparam, dparam, sparam);
+   }
+   
+   // Handle Visual Trading events (only if enabled)
+   if(g_visualTradeManager != NULL && g_visualTradeManager.IsEnabled())
+   {
+      g_visualTradeManager.OnChartEvent(id, lparam, dparam, sparam);
    }
 }
 

@@ -12,8 +12,8 @@
 //+------------------------------------------------------------------+
 void WriteDebugLog(string location, string message, string dataJson)
 {
-   string logPath = "ForexTradeAssistant_debug.log";
-   int fileHandle = FileOpen(logPath, FILE_WRITE | FILE_READ | FILE_TXT | FILE_COMMON);
+   string logPath = ".cursor\\debug.log";
+   int fileHandle = FileOpen(logPath, FILE_WRITE | FILE_READ | FILE_TXT);
    if(fileHandle == INVALID_HANDLE)
    {
       int error = GetLastError();
